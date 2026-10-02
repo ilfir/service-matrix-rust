@@ -32,6 +32,18 @@ The overall production-library line-coverage gate is 90%. The algorithm module a
 
 ## Docker
 
+Deploy or replace the named container in the background:
+
+```sh
+./deploy.sh
+```
+
+The script exits after Docker accepts the container, so disconnecting the terminal does not stop
+the service. The container uses Docker's `unless-stopped` restart policy and will return after a
+Docker daemon or host restart unless it was explicitly stopped.
+
+Manual build and foreground run:
+
 ```sh
 docker build --build-arg SERVICE_MATRIX_GIT_SHA="$(git rev-parse HEAD)" -t service-matrix-rust .
 docker run --rm -p 8080:8080 \
