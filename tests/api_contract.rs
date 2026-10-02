@@ -110,6 +110,26 @@ async fn search_supports_cyrillic() {
 }
 
 #[tokio::test]
+async fn search_accepts_empty_cells_as_blocked_positions() {
+    let fixture = Fixture::new();
+    let (status, body) = fixture
+        .request(
+            Method::POST,
+            "/words/Search",
+            Some(json!({
+                "maxLength": 3,
+                "minLength": 3,
+                "maxWords": 5,
+                "lettersMatrix":[["a", ""], ["x", "b"], ["x", "c"]]
+            })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body["abc"].is_object());
+    assert_eq!(body["abc"]["1"]["b"], "1 1");
+}
+
+#[tokio::test]
 async fn client_input_is_tolerant_like_aspnet_core() {
     let fixture = Fixture::new();
     let (status, body) = fixture

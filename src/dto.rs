@@ -121,12 +121,10 @@ impl SearchRequest {
         if matrix.iter().any(|row| row.len() != width) {
             errors.push("All rows in LettersMatrix must have the same length.".to_owned());
         }
-        if matrix
-            .iter()
-            .flatten()
-            .any(|cell| cell.chars().count() != 1)
-        {
-            errors.push("Each LettersMatrix cell must contain exactly one character.".to_owned());
+        if matrix.iter().flatten().any(|cell| cell.chars().count() > 1) {
+            errors.push(
+                "Each non-empty LettersMatrix cell must contain exactly one character.".to_owned(),
+            );
         }
 
         if errors.is_empty() {
@@ -297,5 +295,11 @@ mod tests {
         };
         let errors = invalid.validate().unwrap_err();
         assert_eq!(errors.len(), 3);
+
+        let empty_cells = SearchRequest {
+            letters_matrix: Some(vec![vec![String::new(), "a".into()]]),
+            ..empty
+        };
+        assert!(empty_cells.validate().is_ok());
     }
 }

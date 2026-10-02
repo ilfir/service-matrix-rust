@@ -21,6 +21,8 @@ Last updated: 2026-10-02
 - [x] Verify real dictionary search performance and Docker persistence across restart.
 - [x] Add ASP.NET-compatible tolerant client input for route/query casing, JSON property casing,
       numeric strings, and boolean strings, with regression coverage.
+- [x] Accept empty-string matrix cells as blocked search positions, with algorithm and HTTP
+      regression coverage.
 
 ## Finalization
 

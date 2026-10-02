@@ -18,6 +18,10 @@ request property names are matched without regard to ASCII case. Search limits m
 numbers (`5`) or numeric strings (`"5"`). Boolean update values may likewise be sent as booleans or
 `"true"`/`"false"` strings.
 
+Search matrices may contain empty-string cells (`""`). Empty cells are treated as blocked grid
+positions and are never used in a word path. Rows must still be non-empty and rectangular, and
+each non-empty cell must contain exactly one Unicode character.
+
 ## Coverage
 
 ```sh

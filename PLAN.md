@@ -18,7 +18,8 @@ Before implementing Rust, capture the observable C# behavior in executable fixtu
 Expected compatibility exceptions:
 
 - Refresh the in-memory cache immediately after update, merge, and cleanup operations.
-- Reject jagged matrices and cells that do not contain exactly one Unicode character.
+- Reject jagged matrices and non-empty cells that contain more than one Unicode character; treat
+  empty-string cells as blocked positions for client compatibility.
 - Report the actual lookup source instead of labeling every result `Dictionary`.
 - Return meaningful merge counts.
 - Make cleanup update the merged dictionary consumed by subsequent searches.
@@ -77,7 +78,7 @@ Validation:
 - `maxWords` must be at least 1.
 - `lettersMatrix` is required and must contain at least one row.
 - Every row must be nonempty and have the same column count.
-- Every cell must contain exactly one Unicode character.
+- Every cell may be empty (a blocked position) or contain exactly one Unicode character.
 - Invalid input returns `400` with the C# error envelope: `success`, `error`, and optional `details`.
 
 Successful response remains an object keyed by found word. Each word maps path indexes to an object whose key is the original matrix character and whose value is `"row column"` using zero-based coordinates.

@@ -19,7 +19,7 @@ pub enum MatrixError {
     Empty,
     #[error("matrix rows must be non-empty and rectangular")]
     Jagged,
-    #[error("every matrix cell must contain exactly one character")]
+    #[error("every non-empty matrix cell must contain exactly one character")]
     InvalidCell,
 }
 
@@ -50,11 +50,7 @@ impl MatrixIndex {
         if columns == 0 || matrix.iter().any(|row| row.len() != columns) {
             return Err(MatrixError::Jagged);
         }
-        if matrix
-            .iter()
-            .flatten()
-            .any(|cell| cell.chars().count() != 1)
-        {
+        if matrix.iter().flatten().any(|cell| cell.chars().count() > 1) {
             return Err(MatrixError::InvalidCell);
         }
 
@@ -65,7 +61,12 @@ impl MatrixIndex {
         let mut available_characters = HashSet::new();
 
         for (index, cell) in matrix.iter().flatten().enumerate() {
-            let normalized_cell = normalize_character(cell.chars().next().expect("validated cell"));
+            let Some(character) = cell.chars().next() else {
+                originals.push(String::new());
+                normalized.push(String::new());
+                continue;
+            };
+            let normalized_cell = normalize_character(character);
             originals.push(cell.clone());
             normalized.push(normalized_cell.clone());
             available_characters.insert(normalized_cell.clone());
@@ -274,6 +275,16 @@ mod tests {
             MatrixIndex::new(&strings(&[&["ab"]])),
             Err(MatrixError::InvalidCell)
         ));
+
+        let matrix = MatrixIndex::new(&strings(&[&["a", ""], &["", "b"]])).unwrap();
+        assert_eq!(
+            matrix.find_word("ab"),
+            Some(vec![
+                Position { row: 0, column: 0 },
+                Position { row: 1, column: 1 }
+            ])
+        );
+        assert!(matrix.find_word("aa").is_none());
     }
 
     #[test]
