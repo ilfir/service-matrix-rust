@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Lint
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Test
+        run: cargo test --all-features --locked
+      - name: Install coverage tooling
+        run: |
+          rustup toolchain install nightly --component llvm-tools-preview
+          cargo install cargo-llvm-cov --locked
+          sudo apt-get update
+          sudo apt-get install -y jq
+      - name: Enforce coverage gates
+        run: ./scripts/coverage.sh
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-json
+          path: coverage/coverage.json
+      - name: Build Docker image
+        run: docker build --build-arg SERVICE_MATRIX_GIT_SHA=0123456789abcdef0123456789abcdef01234567 -t service-matrix-rust:ci .
+
