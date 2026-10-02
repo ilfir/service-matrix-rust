@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-10-01
+Last updated: 2026-10-02
 
 ## Complete
 
@@ -19,6 +19,8 @@ Last updated: 2026-10-01
 - [x] Run all 142 C# tests from an isolated copy.
 - [x] Run C# versus Rust read-only differential checks against the same dictionary snapshot.
 - [x] Verify real dictionary search performance and Docker persistence across restart.
+- [x] Add ASP.NET-compatible tolerant client input for route/query casing, JSON property casing,
+      numeric strings, and boolean strings, with regression coverage.
 
 ## Finalization
 

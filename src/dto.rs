@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
+use serde_json::{Map, Value};
 use utoipa::ToSchema;
 
 pub type SearchResponse = IndexMap<String, BTreeMap<usize, BTreeMap<String, String>>>;
@@ -18,16 +19,77 @@ const fn default_min_length() -> usize {
     1
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchRequest {
-    #[serde(default = "default_max_length")]
     pub max_length: usize,
-    #[serde(default = "default_max_words")]
     pub max_words: usize,
-    #[serde(default = "default_min_length")]
     pub min_length: usize,
     pub letters_matrix: Option<Vec<Vec<String>>>,
+}
+
+impl<'de> Deserialize<'de> for SearchRequest {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Value::deserialize(deserializer)?;
+        let object = value
+            .as_object()
+            .ok_or_else(|| D::Error::custom("search request must be a JSON object"))?;
+
+        Ok(Self {
+            max_length: deserialize_usize_field(object, "maxLength", default_max_length())?,
+            max_words: deserialize_usize_field(object, "maxWords", default_max_words())?,
+            min_length: deserialize_usize_field(object, "minLength", default_min_length())?,
+            letters_matrix: deserialize_optional_field(object, "lettersMatrix")?,
+        })
+    }
+}
+
+fn field_case_insensitive<'a>(object: &'a Map<String, Value>, name: &str) -> Option<&'a Value> {
+    object
+        .iter()
+        .find_map(|(key, value)| key.eq_ignore_ascii_case(name).then_some(value))
+}
+
+fn deserialize_usize_field<E>(
+    object: &Map<String, Value>,
+    name: &str,
+    default: usize,
+) -> Result<usize, E>
+where
+    E: serde::de::Error,
+{
+    let Some(value) = field_case_insensitive(object, name) else {
+        return Ok(default);
+    };
+    match value {
+        Value::Number(number) => number
+            .as_u64()
+            .and_then(|number| usize::try_from(number).ok())
+            .ok_or_else(|| E::custom(format!("{name} must be a non-negative integer"))),
+        Value::String(number) => number
+            .trim()
+            .parse::<usize>()
+            .map_err(|_| E::custom(format!("{name} must be an integer or numeric string"))),
+        _ => Err(E::custom(format!(
+            "{name} must be an integer or numeric string"
+        ))),
+    }
+}
+
+fn deserialize_optional_field<T, E>(object: &Map<String, Value>, name: &str) -> Result<Option<T>, E>
+where
+    T: serde::de::DeserializeOwned,
+    E: serde::de::Error,
+{
+    match field_case_insensitive(object, name) {
+        None | Some(Value::Null) => Ok(None),
+        Some(value) => serde_json::from_value(value.clone())
+            .map(Some)
+            .map_err(E::custom),
+    }
 }
 
 impl SearchRequest {
@@ -75,12 +137,34 @@ impl SearchRequest {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Default, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateWordsRequest {
     pub words: Option<Vec<String>>,
-    #[serde(default)]
     pub include: bool,
+}
+
+impl<'de> Deserialize<'de> for UpdateWordsRequest {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Value::deserialize(deserializer)?;
+        let object = value
+            .as_object()
+            .ok_or_else(|| D::Error::custom("update request must be a JSON object"))?;
+        let include = match field_case_insensitive(object, "include") {
+            None => false,
+            Some(Value::Bool(value)) => *value,
+            Some(Value::String(value)) if value.eq_ignore_ascii_case("true") => true,
+            Some(Value::String(value)) if value.eq_ignore_ascii_case("false") => false,
+            Some(_) => return Err(D::Error::custom("include must be a boolean")),
+        };
+        Ok(Self {
+            words: deserialize_optional_field(object, "words")?,
+            include,
+        })
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -163,6 +247,26 @@ mod tests {
         assert_eq!(request.max_words, 10);
         assert_eq!(request.min_length, 1);
         assert!(request.validate().is_ok());
+    }
+
+    #[test]
+    fn search_accepts_case_insensitive_properties_and_numeric_strings() {
+        let request: SearchRequest = serde_json::from_str(
+            r#"{"MAXLENGTH":"5","MaxWords":"10","MINlength":"1","LETTERSMATRIX":[["a"]]}"#,
+        )
+        .unwrap();
+        assert_eq!(request.max_length, 5);
+        assert_eq!(request.max_words, 10);
+        assert_eq!(request.min_length, 1);
+        assert!(request.validate().is_ok());
+    }
+
+    #[test]
+    fn update_accepts_case_insensitive_properties_and_boolean_strings() {
+        let request: super::UpdateWordsRequest =
+            serde_json::from_str(r#"{"WORDS":["test"],"INCLUDE":"TRUE"}"#).unwrap();
+        assert_eq!(request.words.unwrap(), vec!["test"]);
+        assert!(request.include);
     }
 
     #[test]

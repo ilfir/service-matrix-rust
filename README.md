@@ -13,6 +13,11 @@ cargo run
 
 The service listens on port `8080` by default and serves Swagger UI at `http://localhost:8080/`.
 
+For compatibility with ASP.NET Core clients, endpoint paths, query-parameter names, and JSON
+request property names are matched without regard to ASCII case. Search limits may be sent as JSON
+numbers (`5`) or numeric strings (`"5"`). Boolean update values may likewise be sent as booleans or
+`"true"`/`"false"` strings.
+
 ## Coverage
 
 ```sh

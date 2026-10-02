@@ -110,6 +110,46 @@ async fn search_supports_cyrillic() {
 }
 
 #[tokio::test]
+async fn client_input_is_tolerant_like_aspnet_core() {
+    let fixture = Fixture::new();
+    let (status, body) = fixture
+        .request(
+            Method::POST,
+            "/WORDS/search/",
+            Some(json!({
+                "MAXLENGTH": "3",
+                "MaxWords": "5",
+                "MINlength": "3",
+                "LETTERSMATRIX":[["ж","и","р"]]
+            })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body["жир"].is_object());
+
+    let (status, body) = fixture
+        .request(Method::GET, "/WORDS/list?INCLUDE=false", None)
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, json!(["excluded"]));
+
+    let (status, body) = fixture
+        .request(
+            Method::GET,
+            "/WORDS/lookupword?WORD=AB&EXACTMATCH=true",
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        body.as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["word"] == "ab")
+    );
+}
+
+#[tokio::test]
 async fn search_rejects_invalid_and_malformed_requests() {
     let fixture = Fixture::new();
     let (status, body) = fixture
